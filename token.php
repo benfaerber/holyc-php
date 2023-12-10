@@ -67,6 +67,14 @@ enum Token {
     case Increment;
     case Decrement;
 
+    case And;
+    case Or;
+    case ShiftL;
+    case ShiftR;
+    case BitwiseAnd;
+    case BitwiseOr;
+    case BitwiseXor;
+
     /** Conditions */
     case Eq;
     case Ne;
@@ -121,6 +129,14 @@ enum Token {
             "..." => Self::Range,
             "TRUE" => Self::True,
             "FALSE" => Self::False,
+            "NULL" => Self::Null,
+
+            "*" => Self::Pointer,
+            "&" => Self::BitwiseAnd,
+
+            "=" => Self::Equals,
+            "+=" => Self::PlusEquals,
+            "-=" => Self::MinusEquals,
         };
     }
 }
