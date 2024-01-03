@@ -1,6 +1,5 @@
 <?php
 
-
 include "token.php";
 
 class LexToken {
