@@ -1,6 +1,6 @@
 <?php
 
-include "token.php";
+namespace Holyc;
 
 class LexToken {
     public function __construct(

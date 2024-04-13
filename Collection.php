@@ -1,11 +1,15 @@
 <?php
 
+namespace Holyc;
+
+use \TypeError;
+
 class Collection implements \JsonSerializable, \Iterator {
     public array $items;
     private int $position = 0;
     private string $type;
 
-    public function __construct(array $items, string $type = 'mixed') {
+    public function __construct(array $items = [], string $type = 'mixed') {
         $this->type = $type;
         $this->items = array_values($items);
         $this->position = 0;
@@ -18,6 +22,10 @@ class Collection implements \JsonSerializable, \Iterator {
     public static function from(array $items, string $type = 'mixed'): Self {
         $cleaned = array_values($items); 
         return new Self($cleaned, $type);
+    }
+
+    public static function fromString(string $value): Self {
+        return new Self(str_split($value), 'string');
     }
 
     public static function range(int $start, ?int $end = null) {
@@ -126,6 +134,10 @@ class Collection implements \JsonSerializable, \Iterator {
             $predicate($item);
         }
         return $this;
+    }
+
+    public function join(string $sep = ''): string {
+        return implode($sep, $this->items);
     }
 
     /** Serialization */

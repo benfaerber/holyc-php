@@ -1,5 +1,5 @@
 <?php
-include 'collection.php';
+namespace Holyc;
 
 class Node {
     public mixed $value;

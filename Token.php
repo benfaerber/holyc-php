@@ -1,5 +1,7 @@
 <?php
 
+namespace Holyc;
+
 enum Token {
     /** Primitive Types */
     // Like void but sizeof 0, ! in Rust as opposed to ()
@@ -92,7 +94,7 @@ enum Token {
     case Label;
     case Break;
     // No continue in holyc
-    case Class;
+    case Clazz;
     case Try;
     case Catch;
     case Throw;
