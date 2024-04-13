@@ -10,7 +10,7 @@ class Lexer {
         $this->tokens = new Collection([]); 
     }
 
-    public function lexNumber(Collection $content): float {
+    public function lexNumber(Collection $content): ?float {
         $index = 0;
         $built = new Collection([], 'string'); 
         $hasDecimal = false;
@@ -29,8 +29,39 @@ class Lexer {
 
             $index++;
         }
-
+    
+        if ($built->count() === 0) return null;
         $literal = $built->join();
         return floatval($literal);
+    }
+
+    public function lexString(Collection $content): ?string {
+        $first = $content->get(0);
+        if ($first !== '"' && $first !== "'") return null; 
+        $isSingle = $first === "'"; 
+        $index = 1;
+        $escaped = false;
+        $built = new Collection([$first], 'string');
+        while (true) {
+            $current = $content->get($index);
+            if ($current === "\\") {
+                $escaped = true;
+                $index++;
+                continue;
+            }
+
+            $char = $isSingle ? "'" : '"';
+            $built->push($current); 
+            if ($current === $char && !$escaped) {
+                break;
+            }
+
+            if ($escaped) {
+                $escaped = false;
+            }
+            $index++;
+        }
+
+        return $built->join();
     }
 }
