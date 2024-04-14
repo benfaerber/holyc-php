@@ -171,8 +171,10 @@ class Collection implements \JsonSerializable, \Iterator {
     }
 }
 
-function collect(array $items, string $type = 'mixed') {
-    return Collection::from($items, $type);
+function collect(array|string $items = [], string $type = 'mixed') {
+    return is_string($items) 
+        ? Collection::fromString($items) 
+        : Collection::from($items, $type);
 }
 
 function collectionTests() {

@@ -104,7 +104,7 @@ enum Token {
     case Exe;
     case Define;
 
-    public static function fromKeyword(string $keyword) {
+    public static function fromKeyword(string $keyword): ?Self {
         return match ($keyword) {
             "U0" => Self::TypeU0,
             "U8" => Self::TypeU8, 
@@ -139,6 +139,7 @@ enum Token {
             "=" => Self::Equals,
             "+=" => Self::PlusEquals,
             "-=" => Self::MinusEquals,
+            default => null, 
         };
     }
 }
