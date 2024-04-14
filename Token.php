@@ -104,6 +104,7 @@ enum Token {
     case Exe;
     case Define;
 
+
     public static function fromKeyword(string $keyword): ?Self {
         return match ($keyword) {
             "U0" => Self::TypeU0,
