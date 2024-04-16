@@ -133,6 +133,8 @@ enum Token {
             "TRUE" => Self::True,
             "FALSE" => Self::False,
             "NULL" => Self::Null,
+            "#define" => Self::Define,
+            "->" => Self::FieldDeref,
 
             "*" => Self::Pointer,
             "&" => Self::BitwiseAnd,
