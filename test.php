@@ -3,6 +3,7 @@
 
 namespace Holyc;
 
+require("Stringable.php");
 require("Collection.php");
 require("Lexer.php");
 require("LexToken.php");

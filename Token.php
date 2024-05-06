@@ -2,108 +2,112 @@
 
 namespace Holyc;
 
-enum Token {
+use Holyc\Stringable;
+
+enum Token: string implements Stringable {
     /** Primitive Types */
     // Like void but sizeof 0, ! in Rust as opposed to ()
-    case TypeU0;
-    case TypeU8;
-    case TypeU16;
-    case TypeU32;
-    case TypeU64;
+    case TypeU0 = 'U0';
+    case TypeU8 = 'U8';
+    case TypeU16 = 'U16';
+    case TypeU32 = 'U32';
+    case TypeU64 = 'U64';
 
-    case TypeI8;
-    case TypeI16;
-    case TypeI32;
-    case TypeI64;
+    case TypeI8 = 'I8';
+    case TypeI16 = 'I16';
+    case TypeI32 = 'I32';
+    case TypeI64 = 'I64';
 
-    case TypeF64; 
+    case TypeF64 = 'F64'; 
 
-    case TypeBool;
+    case TypeBool = 'Bool';
 
     /** Structure */
-    case Ident;
-    case ParenR;
-    case ParenL;
-    case BrackR;
-    case BrackL;
-    case CurlyR;
-    case CurlyL;
+    case Ident = 'Ident';
+    case ParenR = ')';
+    case ParenL = '(';
+    case BrackR = ']';
+    case BrackL = '[';
+    case CurlyR = '}';
+    case CurlyL = '{';
 
-    case Semicolon;
-    case Comma;
+    case Semicolon = ';';
+    case Comma = ',';
     // Also used for variadic
-    case Range;
+    case Range = 'Literal_Range';
 
     /** Literals */
-    case Integer;
-    case Hex;
-    case Float;
-    case String;
-    case Char;
-    case True;
-    case False;
-    case Null;
+    case Integer = 'Literal_Integer';
+    case Hex = 'Literal_Hex';
+    case Float = 'Literal_Float';
+    case String = 'Literal_String';
+    case Char = 'Literal_Char';
+    case True = 'TRUE';
+    case False = 'FALSE';
+    case Null = 'NULL';
 
     // Used for deref and pointer type
-    case Pointer;
+    case Pointer = 'P*';
     // &ident
-    case Ref;
+    case Ref = '&';
     
     /** Assignment */
-    case Equals;
-    case PlusEquals;
-    case MinusEquals;
-    case MultiplyEquals;
-    case DivideEquals;
-    case ModuloEquals;
+    case Equals = '=';
+    case PlusEquals = '+=';
+    case MinusEquals = '-=';
+    case MultiplyEquals = '*=';
+    case DivideEquals = '/=';
+    case ModuloEquals = '%=';
 
     /** Operations */
-    case Plus;
-    case Minus;
-    case Multiply;
-    case Divide;
-    case Modulo;
+    case Plus = '+';
+    case Minus = '-';
+    case Multiply = '*';
+    case Divide = '/';
+    case Modulo = '%';
     // ident->ident
-    case FieldDeref;
+    case FieldDeref = '->';
 
-    case Increment;
-    case Decrement;
+    case Increment = '++';
+    case Decrement = '--';
 
-    case And;
-    case Or;
-    case ShiftL;
-    case ShiftR;
-    case BitwiseAnd;
-    case BitwiseOr;
-    case BitwiseXor;
+    case And = '&&';
+    case Or = '||';
+    case ShiftL = '<<';
+    case ShiftR = '>>';
+    case BitwiseAnd = 'Bitwise_&';
+    case BitwiseOr = '|';
+    case BitwiseXor = '^';
 
     /** Conditions */
-    case Eq;
-    case Ne;
-    case Lt;
-    case Lte;
-    case Gt;
-    case Gte;
+    case Eq = '==';
+    case Ne = '!=';
+    case Lt = '<';
+    case Lte = '<=';
+    case Gt = '>';
+    case Gte = '>=';
 
     /** Statements */
-    case For;
-    case While;
-    case If;
-    case Switch;
-    case Case;
-    case Label;
-    case Break;
+    case For = 'for';
+    case While = 'while';
+    case If = 'if';
+    case Switch = 'switch';
+    case Case = 'case';
+    case Label = 'label';
+    case Break = 'break';
     // No continue in holyc
-    case Clazz;
-    case Try;
-    case Catch;
-    case Throw;
+    case Clazz = 'class';
+    case Try = 'try';
+    case Catch = 'catch';
+    case Throw = 'throw';
 
-    case HashTag;
-    case Include;
-    case Exe;
-    case Define;
+    case Include = '#include';
+    case Exe = '#exe';
+    case Define = '#define';
 
+    public function toString(): string {
+        return $this->value;
+    }
 
     public static function fromKeyword(string $keyword): ?Self {
         return match ($keyword) {
