@@ -71,6 +71,7 @@ class Lexer {
             if ($escaped) {
                 $escaped = false;
             }
+            
             $index++;
         }
 
