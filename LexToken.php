@@ -3,6 +3,7 @@
 namespace Holyc;
 
 class LexToken {
+    
     public function __construct(
         public Token $token, 
         public mixed $contents = null
