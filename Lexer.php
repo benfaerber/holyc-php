@@ -8,7 +8,9 @@ class Consumed {
     public function __construct(
         public mixed $value,
         public int $length 
-    ) {}
+    ) {
+        //
+    }
 
     public function __toString() {
         return strval($this->value);
