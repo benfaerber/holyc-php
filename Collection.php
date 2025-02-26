@@ -41,7 +41,7 @@ class Collection implements \JsonSerializable, \Iterator {
 
     public function matchesType($item, string $desiredType) {
         if ($desiredType === 'mixed') return true;
-        $primitives = new Self(["boolean", "integer", "float", "string", "array", "null"]);
+        $primitives = new self(["boolean", "integer", "float", "string", "array", "null"]);
         $itemType = gettype($item);
         if ($primitives->contains($itemType)) {
             return $itemType === $desiredType;
