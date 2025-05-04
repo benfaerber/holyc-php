@@ -154,7 +154,7 @@ class Collection implements \JsonSerializable, \Iterator {
         $this->position = 0;
     }
 
-    public function current() {
+    public function current(): mixed {
         return $this->items[$this->position];
     }
 
