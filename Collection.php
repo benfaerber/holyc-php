@@ -190,7 +190,7 @@ function collectionTests() {
     try {
         $failure = new Collection([1, "fail", 3], 'int');
         echo $failure;
-    } catch (TypeError $error) {
+    } catch (TypeError $exc) {
         echo "Had expected type error!";
     }
 
