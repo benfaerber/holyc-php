@@ -19,13 +19,13 @@ class Collection implements \JsonSerializable, \Iterator {
         }
     }
 
-    public static function from(array $items, string $type = 'mixed'): Self {
+    public static function from(array $items, string $type = 'mixed'): self {
         $cleaned = array_values($items); 
-        return new Self($cleaned, $type);
+        return new self($cleaned, $type);
     }
 
-    public static function fromString(string $value): Self {
-        return new Self(str_split($value), 'string');
+    public static function fromString(string $value): self {
+        return new self(str_split($value), 'string');
     }
 
     public static function range(int $start, ?int $end = null) {
@@ -58,12 +58,12 @@ class Collection implements \JsonSerializable, \Iterator {
         return $this->items[$index];
     }
 
-    public function push(mixed $item): Self {
+    public function push(mixed $item): self {
         array_push($this->items, $item);
         return $this; 
     }
 
-    public function prepend(mixed $item): Self {
+    public function prepend(mixed $item): self {
         $this->items = [$item, ...$this->items];
         return $this;
     }
@@ -80,7 +80,7 @@ class Collection implements \JsonSerializable, \Iterator {
         return $this->get(0);
     }
 
-    public function sort(): Self {
+    public function sort(): self {
         $copy = clone $this->items;
         sort($copy);
         return Collection::from($copy, $this->type);
@@ -95,11 +95,11 @@ class Collection implements \JsonSerializable, \Iterator {
         return false;
     }
 
-    public function map($predicate): Self {
+    public function map($predicate): self {
         return Collection::from(array_map($predicate, $this->items));
     }
 
-    public function filter($predicate): Self {
+    public function filter($predicate): self {
         $finished = array_values(array_filter($this->items, $predicate));
         return Collection::from($finished, $this->type);
     }
@@ -129,7 +129,7 @@ class Collection implements \JsonSerializable, \Iterator {
         return $start;
     }
 
-    public function tap($predicate): Self {
+    public function tap($predicate): self {
         foreach ($this->items as $item) {
             $predicate($item);
         }
