@@ -30,5 +30,6 @@ assertIt($lexer->lexWord(collect("\$cool = 20"))->value, "\$cool");
 assertIt($lexer->lexWord(collect("case asdf"))->value, "case");
 
 assertIt($lexer->lexKeyword(collect("TRUE asdf"))->value, Token::True, logs: false);
+assertIt($lexer->lexKeyword(collect("FALSE asdf"))->value, Token::False, logs: false);
 assertIt($lexer->lexKeyword(collect("+= asdf"))->value, Token::PlusEquals, logs: false);
 
