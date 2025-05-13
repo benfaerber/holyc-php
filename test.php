@@ -17,6 +17,7 @@ use function Holyc\assertIt;
 
 $lexer = new Lexer("");
 assertIt($lexer->lexNumber(collect("125.24 blah blah"))->value, 125.24);
+assertIt($lexer->lexNumber(collect("100 blah blah"))->value, 100.);
 
 assertIt($lexer->lexNumber(collect(".34 cool"))->value, 0.34);
 assertIt($lexer->lexNumber(collect("1 oh yeah"))->value, 1.0);
@@ -30,5 +31,6 @@ assertIt($lexer->lexWord(collect("\$cool = 20"))->value, "\$cool");
 assertIt($lexer->lexWord(collect("case asdf"))->value, "case");
 
 assertIt($lexer->lexKeyword(collect("TRUE asdf"))->value, Token::True, logs: false);
+assertIt($lexer->lexKeyword(collect("FALSE asdf"))->value, Token::False, logs: false);
 assertIt($lexer->lexKeyword(collect("+= asdf"))->value, Token::PlusEquals, logs: false);
 

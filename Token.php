@@ -5,7 +5,7 @@ namespace Holyc;
 use Holyc\Stringable;
 
 enum Token: string implements Stringable {
-    /** Primitive Types */
+    /* Primitive Types */
     // Like void but sizeof 0, ! in Rust as opposed to ()
     case TypeU0 = 'U0';
     case TypeU8 = 'U8';
@@ -36,7 +36,7 @@ enum Token: string implements Stringable {
     // Also used for variadic
     case Range = 'Literal_Range';
 
-    /** Literals */
+    /* Literals */
     case Integer = 'Literal_Integer';
     case Hex = 'Literal_Hex';
     case Float = 'Literal_Float';
@@ -51,7 +51,7 @@ enum Token: string implements Stringable {
     // &ident
     case Ref = '&';
     
-    /** Assignment */
+    /* Assignment */
     case Equals = '=';
     case PlusEquals = '+=';
     case MinusEquals = '-=';
@@ -59,7 +59,7 @@ enum Token: string implements Stringable {
     case DivideEquals = '/=';
     case ModuloEquals = '%=';
 
-    /** Operations */
+    /* Operations */
     case Plus = '+';
     case Minus = '-';
     case Multiply = '*';
@@ -79,7 +79,7 @@ enum Token: string implements Stringable {
     case BitwiseOr = '|';
     case BitwiseXor = '^';
 
-    /** Conditions */
+    /* Conditions */
     case Eq = '==';
     case Ne = '!=';
     case Lt = '<';
@@ -87,7 +87,7 @@ enum Token: string implements Stringable {
     case Gt = '>';
     case Gte = '>=';
 
-    /** Statements */
+    /* Statements */
     case For = 'for';
     case While = 'while';
     case If = 'if';
@@ -151,6 +151,16 @@ enum Token: string implements Stringable {
     }
 
     public function fromOperator() {
-
+        $operators = [
+            ["(", Self::ParenL],
+            [")", Self::ParenR],
+            ["[", Self::BrackL],
+            ["]", Self::BrackR],
+            ["{", Self::CurlyL],
+            ["}", Self::CurlyR],
+            [";", Self::Semicolon],
+            [",", Self::Semicolon],
+            ["...", Self::Range],
+        ];
     }
 }
