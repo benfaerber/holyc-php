@@ -149,4 +149,8 @@ enum Token: string implements Stringable {
             default => null, 
         };
     }
+
+    public function fromOperator() {
+
+    }
 }
