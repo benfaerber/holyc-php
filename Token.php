@@ -161,6 +161,7 @@ enum Token: string implements Stringable {
             [";", Self::Semicolon],
             [",", Self::Semicolon],
             ["...", Self::Range],
+            ["&", Self::BitwiseAnd],
         ];
     }
 }
