@@ -98,7 +98,9 @@ class Lexer {
         $word = $this->lexWord($content);
         if (!$word) return null;
         $token = Token::fromKeyword($word);
-        if (!$token) return null;
+        if (!$token) {
+            return null;
+        }
         return new Consumed($token, strlen($word));
     }
 }
