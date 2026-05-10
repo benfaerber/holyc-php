@@ -131,7 +131,6 @@ class Lexer {
         if ($first !== '"' && $first !== "'") return null;
         $isSingle = $first === "'";
         $index = 1;
-        $escaped = false;
         $built = new Collection([], 'string');
         $char = $isSingle ? "'" : '"';
 
@@ -141,22 +140,31 @@ class Lexer {
                 throw new LexError("Unterminated string literal");
             }
             if ($current === "\\") {
-                $escaped = true;
-                $index++;
+                $next = $content->get($index + 1);
+                if ($next === null) {
+                    throw new LexError("Unterminated escape in string literal");
+                }
+                $built->push(match ($next) {
+                    'n'  => "\n",
+                    't'  => "\t",
+                    'r'  => "\r",
+                    '0'  => "\0",
+                    '\\' => "\\",
+                    "'"  => "'",
+                    '"'  => '"',
+                    default => $next, // unknown escape: keep char verbatim
+                });
+                $index += 2;
                 continue;
             }
-            if ($current === $char && !$escaped) {
+            if ($current === $char) {
                 break;
             }
             $built->push($current);
-            if ($escaped) {
-                $escaped = false;
-            }
             $index++;
         }
 
         $text = $built->join();
-        // +2 for the surrounding quotes; +escapes consumed
         // Length of source consumed: index + 1 (closing quote)
         return new Consumed($text, $index + 1);
     }
@@ -294,6 +302,15 @@ class Lexer {
             // Whitespace
             if (self::isWhitespace($head)) {
                 $cursor++;
+                continue;
+            }
+
+            // Preprocessor directives — Phase 1: skip the whole line.
+            // (No newline tokens are emitted, so we can't otherwise terminate them.)
+            if ($head === '#') {
+                while ($cursor < $n && $this->source->get($cursor) !== "\n") {
+                    $cursor++;
+                }
                 continue;
             }
 
