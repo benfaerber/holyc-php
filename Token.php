@@ -109,49 +109,78 @@ enum Token: string implements Stringable {
         return $this->value;
     }
 
+    /**
+     * Word-keyword table (alphabetic identifiers that are reserved).
+     * Operators/punctuation are handled by operatorTable().
+     */
     public static function fromKeyword(string $keyword): ?Self {
         return match ($keyword) {
             "U0" => Self::TypeU0,
-            "U8" => Self::TypeU8, 
-            "U16" => Self::TypeU16, 
-            "U32" => Self::TypeU32, 
-            "U64" => Self::TypeU64, 
-            
-            "I8" => Self::TypeI8, 
-            "I16" => Self::TypeI16, 
-            "I32" => Self::TypeI32, 
-            "I64" => Self::TypeI64, 
+            "U8" => Self::TypeU8,
+            "U16" => Self::TypeU16,
+            "U32" => Self::TypeU32,
+            "U64" => Self::TypeU64,
+
+            "I8" => Self::TypeI8,
+            "I16" => Self::TypeI16,
+            "I32" => Self::TypeI32,
+            "I64" => Self::TypeI64,
 
             "F64" => Self::TypeF64,
             "Bool" => Self::TypeBool,
-            
-            "(" => Self::ParenL,       
-            ")" => Self::ParenR,       
-            "[" => Self::BrackL,       
-            "]" => Self::BrackR,       
-            "{" => Self::CurlyL,       
-            "}" => Self::CurlyR,       
-            ";" => Self::Semicolon,       
-            "," => Self::Semicolon,
-            "..." => Self::Range,
+
             "TRUE" => Self::True,
             "FALSE" => Self::False,
             "NULL" => Self::Null,
+
+            "for" => Self::For,
+            "while" => Self::While,
+            "if" => Self::If,
+            "switch" => Self::Switch,
+            "case" => Self::Case,
+            "label" => Self::Label,
+            "break" => Self::Break,
+            "class" => Self::Clazz,
+            "try" => Self::Try,
+            "catch" => Self::Catch,
+            "throw" => Self::Throw,
+
+            "#include" => Self::Include,
+            "#exe" => Self::Exe,
             "#define" => Self::Define,
-            "->" => Self::FieldDeref,
 
-            "*" => Self::Pointer,
-            "&" => Self::BitwiseAnd,
-
-            "=" => Self::Equals,
-            "+=" => Self::PlusEquals,
-            "-=" => Self::MinusEquals,
-            default => null, 
+            default => null,
         };
     }
 
-    public function fromOperator() {
-        $operators = [
+    /**
+     * Operator/punctuation table. Order matters: longest match wins,
+     * so multi-char operators must come before their single-char prefixes.
+     */
+    public static function operatorTable(): array {
+        return [
+            // 3-char
+            ["...", Self::Range],
+
+            // 2-char
+            ["==", Self::Eq],
+            ["!=", Self::Ne],
+            ["<=", Self::Lte],
+            [">=", Self::Gte],
+            ["<<", Self::ShiftL],
+            [">>", Self::ShiftR],
+            ["&&", Self::And],
+            ["||", Self::Or],
+            ["++", Self::Increment],
+            ["--", Self::Decrement],
+            ["+=", Self::PlusEquals],
+            ["-=", Self::MinusEquals],
+            ["*=", Self::MultiplyEquals],
+            ["/=", Self::DivideEquals],
+            ["%=", Self::ModuloEquals],
+            ["->", Self::FieldDeref],
+
+            // 1-char
             ["(", Self::ParenL],
             [")", Self::ParenR],
             ["[", Self::BrackL],
@@ -159,9 +188,25 @@ enum Token: string implements Stringable {
             ["{", Self::CurlyL],
             ["}", Self::CurlyR],
             [";", Self::Semicolon],
-            [",", Self::Semicolon],
-            ["...", Self::Range],
+            [",", Self::Comma],
+            ["=", Self::Equals],
+            ["+", Self::Plus],
+            ["-", Self::Minus],
+            ["*", Self::Multiply],
+            ["/", Self::Divide],
+            ["%", Self::Modulo],
+            ["<", Self::Lt],
+            [">", Self::Gt],
             ["&", Self::BitwiseAnd],
+            ["|", Self::BitwiseOr],
+            ["^", Self::BitwiseXor],
         ];
+    }
+
+    public static function fromOperator(string $op): ?Self {
+        foreach (Self::operatorTable() as [$text, $token]) {
+            if ($text === $op) return $token;
+        }
+        return null;
     }
 }

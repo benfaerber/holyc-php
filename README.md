@@ -5,5 +5,13 @@ Eventually this is going to be a NASM Assembler for HolyC, written in PHP for th
 No packages allowed! Everything must be written from scratch 
 from the `Collections` to the `NodeTree` and everything in between!
 
-## TODO:
-Finish Lexer
+## Status
+- [x] `Collection` (map/filter/reduce/Iterator)
+- [x] Lexer (numbers, hex, strings, chars, idents, keywords, operators, comments)
+- [ ] Parser / AST
+- [ ] NASM codegen
+
+## Run tests
+```
+php test.php
+```

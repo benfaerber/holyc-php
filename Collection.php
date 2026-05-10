@@ -81,9 +81,13 @@ class Collection implements \JsonSerializable, \Iterator {
     }
 
     public function sort(): self {
-        $copy = clone $this->items;
+        $copy = $this->items;
         sort($copy);
         return Collection::from($copy, $this->type);
+    }
+
+    public function slice(int $offset, ?int $length = null): self {
+        return Collection::from(array_slice($this->items, $offset, $length), $this->type);
     }
 
     public function contains(mixed $desired): bool {
@@ -163,7 +167,7 @@ class Collection implements \JsonSerializable, \Iterator {
     }
 
     public function valid(): bool {
-        return $this->position < count($this->items) - 1;
+        return $this->position < count($this->items);
     }
 
     public function key(): int {
