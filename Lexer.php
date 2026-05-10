@@ -294,32 +294,40 @@ class Lexer {
         $cursor = 0;
         $tokens = new Collection([], LexToken::class);
         $n = $this->source->count();
+        $source = $this->source;
 
         while ($cursor < $n) {
-            $rest = $this->source->slice($cursor);
-            $head = $rest->get(0);
+            $head = $source->get($cursor);
 
-            // Whitespace
+            // Whitespace — by far the most common case, so handle it without
+            // allocating a slice.
             if (self::isWhitespace($head)) {
                 $cursor++;
                 continue;
             }
 
             // Preprocessor directives — Phase 1: skip the whole line.
-            // (No newline tokens are emitted, so we can't otherwise terminate them.)
             if ($head === '#') {
-                while ($cursor < $n && $this->source->get($cursor) !== "\n") {
+                while ($cursor < $n && $source->get($cursor) !== "\n") {
                     $cursor++;
                 }
                 continue;
             }
 
-            // Comments
-            $skipped = $this->lexComment($rest);
-            if ($skipped > 0) {
-                $cursor += $skipped;
-                continue;
+            // Comments — quick char-level guard before slicing.
+            if ($head === '/') {
+                $next = $source->get($cursor + 1);
+                if ($next === '/' || $next === '*') {
+                    $skipped = $this->lexComment($source->slice($cursor));
+                    if ($skipped > 0) {
+                        $cursor += $skipped;
+                        continue;
+                    }
+                }
             }
+
+            // From here on we need a slice for the sub-lexers.
+            $rest = $source->slice($cursor);
 
             // Numbers (incl. 0x hex). Also handle leading '.' followed by digit.
             if (self::isDigit($head) || ($head === '.' && self::isDigit($rest->get(1)))) {

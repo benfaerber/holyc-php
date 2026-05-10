@@ -58,6 +58,14 @@ enum Token: string implements Stringable {
     case MultiplyEquals = '*=';
     case DivideEquals = '/=';
     case ModuloEquals = '%=';
+    case BitOrEquals = '|=';
+    case BitAndEquals = 'Bitwise_&=';
+    case BitXorEquals = '^=';
+    case ShiftLEquals = '<<=';
+    case ShiftREquals = '>>=';
+
+    /* Logical */
+    case Not = '!';
 
     /* Operations */
     case Plus = '+';
@@ -161,6 +169,8 @@ enum Token: string implements Stringable {
         return [
             // 3-char
             ["...", Self::Range],
+            ["<<=", Self::ShiftLEquals],
+            [">>=", Self::ShiftREquals],
 
             // 2-char
             ["==", Self::Eq],
@@ -178,6 +188,9 @@ enum Token: string implements Stringable {
             ["*=", Self::MultiplyEquals],
             ["/=", Self::DivideEquals],
             ["%=", Self::ModuloEquals],
+            ["|=", Self::BitOrEquals],
+            ["&=", Self::BitAndEquals],
+            ["^=", Self::BitXorEquals],
             ["->", Self::FieldDeref],
 
             // 1-char
@@ -197,6 +210,7 @@ enum Token: string implements Stringable {
             ["%", Self::Modulo],
             ["<", Self::Lt],
             [">", Self::Gt],
+            ["!", Self::Not],
             ["&", Self::BitwiseAnd],
             ["|", Self::BitwiseOr],
             ["^", Self::BitwiseXor],

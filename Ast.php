@@ -98,6 +98,13 @@ class VarDecl extends AstNode {
     ) {}
 }
 
+class ClassDecl extends AstNode {
+    public function __construct(
+        public string $name,
+        public Collection $fields // Collection<VarDecl>
+    ) {}
+}
+
 /* ------------------------------------------------------------------ *
  * Statements
  * ------------------------------------------------------------------ */

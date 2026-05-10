@@ -5,38 +5,26 @@ namespace Holyc;
 class ParseError extends \RuntimeException {}
 
 /**
- * Recursive-descent parser for HolyC (Phase 1 subset).
+ * Recursive-descent parser for HolyC (Phase 2).
  *
- * Grammar (sketch):
+ * New in Phase 2:
+ *   - User-defined types accepted in any type position (no registry needed).
+ *   - `<ident> <*>* <ident>` followed by '=' ';' ',' '(' '[' is recognised as a
+ *     declaration start (resolves the C-style typedef ambiguity heuristically).
+ *   - Multi-name var decls with per-declarator pointers and initializers.
+ *   - `class Name { fields };` declarations.
+ *   - Top-level statements (e.g. bare `DocClear;`).
+ *
+ * Grammar (Phase 2 sketch):
  *   program        := topLevel*
- *   topLevel       := funcDecl | varDecl
+ *   topLevel       := classDecl | funcDecl | varDeclList | exprStmt
+ *   classDecl      := 'class' Ident '{' varDeclList* '}' ';'
  *   funcDecl       := type ident '(' paramList? ')' (block | ';')
- *   paramList      := param (',' param)*
- *   param          := type ident?
- *   varDecl        := type ident ('=' assignment)? ';'
- *   type           := typeKeyword '*'*
- *   block          := '{' stmt* '}'
- *   stmt           := block | ifStmt | whileStmt | forStmt
- *                   | returnStmt | breakStmt | varDecl | exprStmt
- *   exprStmt       := expression ';'
- *   expression     := comma
- *   comma          := assignment (',' assignment)*
- *   assignment     := logicalOr (assignOp assignment)?
- *   logicalOr      := logicalAnd ('||' logicalAnd)*
- *   logicalAnd     := bitOr ('&&' bitOr)*
- *   bitOr          := bitXor ('|' bitXor)*
- *   bitXor         := bitAnd ('^' bitAnd)*
- *   bitAnd         := equality ('&' equality)*
- *   equality       := comparison (('=='|'!=') comparison)*
- *   comparison     := shift (('<'|'<='|'>'|'>=') shift)*
- *   shift          := additive (('<<'|'>>') additive)*
- *   additive       := multiplicative (('+'|'-') multiplicative)*
- *   multiplicative := unary (('*'|'/'|'%') unary)*
- *   unary          := ('+'|'-'|'*'|'&'|'++'|'--') unary | postfix
- *   postfix        := primary ( '(' args? ')' | '[' expr ']'
- *                              | '->' ident | '++' | '--' )*
- *   primary        := intLit | floatLit | strLit | charLit | TRUE | FALSE
- *                   | NULL | ident | '(' expression ')'
+ *   varDeclList    := baseType declarator (',' declarator)* ';'
+ *   declarator     := '*'* ident ('=' assignment)?
+ *   baseType       := typeKeyword | Ident
+ *   type           := baseType '*'*
+ *   ... (statements / expressions unchanged)
  */
 class Parser {
     private int $pos = 0;
@@ -87,7 +75,11 @@ class Parser {
         $t = $this->peek();
         if ($t === null || $t->token !== $kind) {
             $got = $t === null ? 'EOF' : $t->token->value;
-            $msg = "Expected {$kind->value}" . ($what !== '' ? " ($what)" : '') . ", got {$got} at token #{$this->pos}";
+            $extra = '';
+            if ($t !== null && $t->contents !== null) {
+                $extra = " (=" . var_export($t->contents, true) . ")";
+            }
+            $msg = "Expected {$kind->value}" . ($what !== '' ? " ($what)" : '') . ", got {$got}{$extra} at token #{$this->pos}";
             throw new ParseError($msg);
         }
         return $this->advance();
@@ -102,6 +94,41 @@ class Parser {
         };
     }
 
+    /**
+     * Heuristic: are we looking at the start of a declaration?
+     *
+     *   - A built-in type keyword always starts a decl.
+     *   - An ident followed by zero-or-more `*` and another ident, followed
+     *     by one of `= ; , ( [`, is a decl. This catches user-defined types
+     *     without needing a typedef table. The well-known false positive
+     *     `a * b;` (multiplication-as-statement) is treated as a decl, which
+     *     is virtually always what is meant in HolyC.
+     */
+    private function looksLikeDeclStart(): bool {
+        $t = $this->peek();
+        if ($t === null) return false;
+        if (self::isTypeToken($t->token)) return true;
+        if ($t->token !== Token::Ident) return false;
+
+        $i = 1;
+        while (($p = $this->peek($i)) !== null && $p->token === Token::Multiply) {
+            $i++;
+        }
+        $name = $this->peek($i);
+        if ($name === null || $name->token !== Token::Ident) return false;
+
+        $after = $this->peek($i + 1);
+        if ($after === null) return false;
+        return match ($after->token) {
+            Token::Equals,
+            Token::Semicolon,
+            Token::Comma,
+            Token::ParenL,
+            Token::BrackL => true,
+            default => false,
+        };
+    }
+
     /* ------------------------------------------------------------------ *
      * Top-level
      * ------------------------------------------------------------------ */
@@ -109,19 +136,43 @@ class Parser {
     public function parse(): Program {
         $decls = new Collection([], AstNode::class);
         while (!$this->eof()) {
-            $decls->push($this->parseTopLevel());
+            $this->parseTopLevelInto($decls);
         }
         return new Program($decls);
     }
 
-    private function parseTopLevel(): AstNode {
-        $type = $this->parseType();
+    private function parseTopLevelInto(Collection $out): void {
+        if ($this->check(Token::Clazz)) {
+            $out->push($this->parseClassDecl());
+            return;
+        }
+
+        if (!$this->looksLikeDeclStart()) {
+            // HolyC allows bare statements at top level (e.g. "Hello\n";).
+            $out->push($this->parseStmt());
+            return;
+        }
+
+        // Decide func-decl vs var-decl by reading: baseType '*'* ident ('(' | rest)
+        $base = $this->parseBaseType();
+        $depth = $this->parsePointers();
         $name = $this->expect(Token::Ident, 'declaration name')->contents;
 
         if ($this->check(Token::ParenL)) {
-            return $this->finishFuncDecl($type, $name);
+            // It's a function: '*'s after baseType belong to the return type.
+            $rtype = new TypeRef($base, $depth);
+            $out->push($this->finishFuncDecl($rtype, $name));
+            return;
         }
-        return $this->finishVarDecl($type, $name);
+
+        // It's a var-decl list (possibly multiple names).
+        $out->push($this->finishDeclarator($base, $depth, $name));
+        while ($this->match(Token::Comma)) {
+            $d = $this->parsePointers();
+            $n = $this->expect(Token::Ident, 'declarator name')->contents;
+            $out->push($this->finishDeclarator($base, $d, $n));
+        }
+        $this->expect(Token::Semicolon, 'after variable declaration');
     }
 
     private function finishFuncDecl(TypeRef $returnType, string $name): FuncDecl {
@@ -143,36 +194,71 @@ class Parser {
     }
 
     private function parseParam(): Param {
-        $type = $this->parseType();
+        $base = $this->parseBaseType();
+        $depth = $this->parsePointers();
         $name = null;
         if ($this->check(Token::Ident)) {
             $name = $this->advance()->contents;
         }
-        return new Param($type, $name);
+        return new Param(new TypeRef($base, $depth), $name);
     }
 
-    private function finishVarDecl(TypeRef $type, string $name): VarDecl {
+    private function finishDeclarator(string $base, int $depth, string $name): VarDecl {
         $init = null;
         if ($this->match(Token::Equals)) {
             $init = $this->parseAssignment();
         }
-        $this->expect(Token::Semicolon, 'after variable declaration');
-        return new VarDecl($type, $name, $init);
+        return new VarDecl(new TypeRef($base, $depth), $name, $init);
     }
 
-    private function parseType(): TypeRef {
-        $t = $this->peek();
-        if ($t === null || !self::isTypeToken($t->token)) {
-            $got = $t === null ? 'EOF' : $t->token->value;
-            throw new ParseError("Expected type keyword, got {$got} at token #{$this->pos}");
+    private function parseClassDecl(): ClassDecl {
+        $this->expect(Token::Clazz);
+        $name = $this->expect(Token::Ident, 'class name')->contents;
+        $this->expect(Token::CurlyL, 'class body start');
+        $fields = new Collection([], AstNode::class);
+        while (!$this->check(Token::CurlyR) && !$this->eof()) {
+            $base = $this->parseBaseType();
+            $depth = $this->parsePointers();
+            $fname = $this->expect(Token::Ident, 'field name')->contents;
+            $fields->push($this->finishDeclarator($base, $depth, $fname));
+            while ($this->match(Token::Comma)) {
+                $d = $this->parsePointers();
+                $n = $this->expect(Token::Ident, 'field name')->contents;
+                $fields->push($this->finishDeclarator($base, $d, $n));
+            }
+            $this->expect(Token::Semicolon, 'after class field');
         }
-        $this->advance();
-        $base = $t->token->value;
+        $this->expect(Token::CurlyR, 'class body end');
+        $this->expect(Token::Semicolon, 'after class declaration');
+        return new ClassDecl($name, $fields);
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Types
+     * ------------------------------------------------------------------ */
+
+    private function parseBaseType(): string {
+        $t = $this->peek();
+        if ($t === null) {
+            throw new ParseError("Expected type, got EOF at token #{$this->pos}");
+        }
+        if (self::isTypeToken($t->token)) {
+            $this->advance();
+            return $t->token->value;
+        }
+        if ($t->token === Token::Ident) {
+            $this->advance();
+            return (string) $t->contents;
+        }
+        throw new ParseError("Expected type keyword or identifier, got {$t->token->value} at token #{$this->pos}");
+    }
+
+    private function parsePointers(): int {
         $depth = 0;
         while ($this->match(Token::Multiply) || $this->match(Token::Pointer)) {
             $depth++;
         }
-        return new TypeRef($base, $depth);
+        return $depth;
     }
 
     /* ------------------------------------------------------------------ *
@@ -183,12 +269,37 @@ class Parser {
         $this->expect(Token::CurlyL, 'block start');
         $stmts = new Collection([], AstNode::class);
         while (!$this->check(Token::CurlyR) && !$this->eof()) {
-            $stmts->push($this->parseStmt());
+            $this->parseStmtInto($stmts);
         }
         $this->expect(Token::CurlyR, 'block end');
         return new Block($stmts);
     }
 
+    /**
+     * Parse a statement OR a (possibly multi-name) declaration into the
+     * given collection. Used by block bodies and top-level.
+     */
+    private function parseStmtInto(Collection $out): void {
+        if ($this->looksLikeDeclStart()) {
+            $base = $this->parseBaseType();
+            $depth = $this->parsePointers();
+            $name = $this->expect(Token::Ident, 'variable name')->contents;
+            $out->push($this->finishDeclarator($base, $depth, $name));
+            while ($this->match(Token::Comma)) {
+                $d = $this->parsePointers();
+                $n = $this->expect(Token::Ident, 'declarator name')->contents;
+                $out->push($this->finishDeclarator($base, $d, $n));
+            }
+            $this->expect(Token::Semicolon, 'after variable declaration');
+            return;
+        }
+        $out->push($this->parseStmt());
+    }
+
+    /**
+     * Parse a single statement (no decls). Used by if/while/for bodies where
+     * a declaration is not allowed without an explicit block.
+     */
     private function parseStmt(): AstNode {
         $t = $this->peek();
         if ($t === null) {
@@ -200,12 +311,6 @@ class Parser {
         if ($t->token === Token::While)   return $this->parseWhileStmt();
         if ($t->token === Token::For)     return $this->parseForStmt();
         if ($t->token === Token::Break)   return $this->parseBreakStmt();
-        if (self::isTypeToken($t->token)) {
-            // Variable declaration
-            $type = $this->parseType();
-            $name = $this->expect(Token::Ident, 'variable name')->contents;
-            return $this->finishVarDecl($type, $name);
-        }
 
         return $this->parseExprStmt();
     }
@@ -217,9 +322,6 @@ class Parser {
         $this->expect(Token::ParenR);
         $then = $this->parseStmt();
         $else = null;
-        // HolyC uses `else` like C; we treat a bare ident "else" as the keyword
-        // since the lexer sees it as Ident (no keyword entry yet). Add a tiny
-        // contextual hook here.
         if ($this->isContextualKeyword('else')) {
             $this->advance();
             $else = $this->parseStmt();
@@ -247,15 +349,11 @@ class Parser {
 
         $init = null;
         if (!$this->check(Token::Semicolon)) {
-            $t = $this->peek();
-            if ($t !== null && self::isTypeToken($t->token)) {
-                $type = $this->parseType();
+            if ($this->looksLikeDeclStart()) {
+                $base = $this->parseBaseType();
+                $depth = $this->parsePointers();
                 $name = $this->expect(Token::Ident, 'for-init variable name')->contents;
-                $vinit = null;
-                if ($this->match(Token::Equals)) {
-                    $vinit = $this->parseAssignment();
-                }
-                $init = new VarDecl($type, $name, $vinit);
+                $init = $this->finishDeclarator($base, $depth, $name);
             } else {
                 $init = $this->parseExpression();
             }
@@ -284,9 +382,8 @@ class Parser {
         return new BreakStmt();
     }
 
-    private function parseExprStmt(): ExprStmt {
-        // HolyC has no explicit `return` token in our enum yet; treat
-        // contextual `return` ident as a return statement.
+    private function parseExprStmt(): AstNode {
+        // Contextual `return` (Token enum has no Return entry yet).
         if ($this->isContextualKeyword('return')) {
             $this->advance();
             $value = null;
@@ -328,6 +425,11 @@ class Parser {
             Token::MultiplyEquals,
             Token::DivideEquals,
             Token::ModuloEquals,
+            Token::BitOrEquals,
+            Token::BitAndEquals,
+            Token::BitXorEquals,
+            Token::ShiftLEquals,
+            Token::ShiftREquals,
         )) {
             $right = $this->parseAssignment(); // right-associative
             return new AssignExpr($op->token, $left, $right);
@@ -429,6 +531,7 @@ class Parser {
         if ($op = $this->match(
             Token::Plus,
             Token::Minus,
+            Token::Not,         // logical not
             Token::Multiply,    // dereference
             Token::BitwiseAnd,  // address-of
             Token::Increment,

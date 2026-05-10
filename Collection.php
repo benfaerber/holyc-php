@@ -14,6 +14,9 @@ class Collection implements \JsonSerializable, \Iterator {
         $this->items = array_values($items);
         $this->position = 0;
 
+        // 'mixed' accepts anything — skip the full validation pass.
+        if ($type === 'mixed') return;
+
         if (!$this->allMatch()) {
             throw new TypeError("Expected type {$type}!");
         }
@@ -39,23 +42,23 @@ class Collection implements \JsonSerializable, \Iterator {
         ); 
     }
 
-    public function matchesType($item, string $desiredType) {
+    public function matchesType($item, string $desiredType): bool {
         if ($desiredType === 'mixed') return true;
-        $primitives = new self(["boolean", "integer", "float", "string", "array", "null"]);
+        // PHP's gettype names; checked in-place to avoid allocating a
+        // helper Collection on every element.
+        static $primitives = [
+            'boolean' => true, 'integer' => true, 'double' => true,
+            'string'  => true, 'array'   => true, 'NULL'   => true,
+        ];
         $itemType = gettype($item);
-        if ($primitives->contains($itemType)) {
+        if (isset($primitives[$itemType])) {
             return $itemType === $desiredType;
         }
-        
         return is_a($item, $desiredType);
     }
 
     public function get(int $index) {
-        if ($index > $this->count() - 1) {
-            return null;
-        }
-
-        return $this->items[$index];
+        return $this->items[$index] ?? null;
     }
 
     public function push(mixed $item): self {
@@ -87,7 +90,12 @@ class Collection implements \JsonSerializable, \Iterator {
     }
 
     public function slice(int $offset, ?int $length = null): self {
-        return Collection::from(array_slice($this->items, $offset, $length), $this->type);
+        // The parent is already validated, so we can skip the constructor's
+        // type check and just clone + replace items.
+        $copy = clone $this;
+        $copy->items = array_slice($this->items, $offset, $length);
+        $copy->position = 0;
+        return $copy;
     }
 
     public function contains(mixed $desired): bool {
