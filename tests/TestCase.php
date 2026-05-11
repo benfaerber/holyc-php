@@ -3,6 +3,12 @@
 namespace Holyc;
 
 /**
+ * Marker exception thrown by TestCase::skip() to signal that a test should
+ * be reported as skipped rather than passed or failed.
+ */
+class SkipTest extends \Exception {}
+
+/**
  * Tiny assertion-based test base class. No packages — written from scratch.
  *
  * Subclass and define methods named `test...()`. The runner discovers them
@@ -53,6 +59,9 @@ abstract class TestCase {
                 if (method_exists($this, 'setUp')) $this->setUp();
                 $this->$m();
                 if (method_exists($this, 'tearDown')) $this->tearDown();
+            } catch (SkipTest $e) {
+                $row['status'] = 'skip';
+                $row['error']  = $e->getMessage();
             } catch (\Throwable $e) {
                 $row['status'] = 'fail';
                 $row['error']  = $e->getMessage();
@@ -61,6 +70,10 @@ abstract class TestCase {
             $results[] = $row;
         }
         return ['results' => $results, 'skipped' => $skipped];
+    }
+
+    protected function skip(string $reason): never {
+        throw new SkipTest($reason);
     }
 
     public function name(): string {

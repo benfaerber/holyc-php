@@ -311,8 +311,19 @@ class Parser {
         if ($t->token === Token::While)   return $this->parseWhileStmt();
         if ($t->token === Token::For)     return $this->parseForStmt();
         if ($t->token === Token::Break)   return $this->parseBreakStmt();
+        if ($t->token === Token::Return)  return $this->parseReturnStmt();
 
         return $this->parseExprStmt();
+    }
+
+    private function parseReturnStmt(): ReturnStmt {
+        $this->expect(Token::Return);
+        $value = null;
+        if (!$this->check(Token::Semicolon)) {
+            $value = $this->parseExpression();
+        }
+        $this->expect(Token::Semicolon, 'after return');
+        return new ReturnStmt($value);
     }
 
     private function parseIfStmt(): IfStmt {
@@ -322,16 +333,10 @@ class Parser {
         $this->expect(Token::ParenR);
         $then = $this->parseStmt();
         $else = null;
-        if ($this->isContextualKeyword('else')) {
-            $this->advance();
+        if ($this->match(Token::Else)) {
             $else = $this->parseStmt();
         }
         return new IfStmt($cond, $then, $else);
-    }
-
-    private function isContextualKeyword(string $word): bool {
-        $t = $this->peek();
-        return $t !== null && $t->token === Token::Ident && $t->contents === $word;
     }
 
     private function parseWhileStmt(): WhileStmt {
@@ -383,17 +388,6 @@ class Parser {
     }
 
     private function parseExprStmt(): AstNode {
-        // Contextual `return` (Token enum has no Return entry yet).
-        if ($this->isContextualKeyword('return')) {
-            $this->advance();
-            $value = null;
-            if (!$this->check(Token::Semicolon)) {
-                $value = $this->parseExpression();
-            }
-            $this->expect(Token::Semicolon);
-            return new ExprStmt(new ReturnStmt($value));
-        }
-
         $expr = $this->parseExpression();
         $this->expect(Token::Semicolon, 'after expression statement');
         return new ExprStmt($expr);

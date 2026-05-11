@@ -99,10 +99,12 @@ enum Token: string implements Stringable {
     case For = 'for';
     case While = 'while';
     case If = 'if';
+    case Else = 'else';
     case Switch = 'switch';
     case Case = 'case';
     case Label = 'label';
     case Break = 'break';
+    case Return = 'return';
     // No continue in holyc
     case Clazz = 'class';
     case Try = 'try';
@@ -144,10 +146,12 @@ enum Token: string implements Stringable {
             "for" => Self::For,
             "while" => Self::While,
             "if" => Self::If,
+            "else" => Self::Else,
             "switch" => Self::Switch,
             "case" => Self::Case,
             "label" => Self::Label,
             "break" => Self::Break,
+            "return" => Self::Return,
             "class" => Self::Clazz,
             "try" => Self::Try,
             "catch" => Self::Catch,

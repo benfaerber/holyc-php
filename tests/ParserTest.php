@@ -157,7 +157,7 @@ class ParserTest extends TestCase {
 
     public function testPointerReturnType() {
         $this->assertEquals(
-            "(program (func U8* alloc () (block (stmt (return null)))))",
+            "(program (func U8* alloc () (block (return null))))",
             sexpr(parseProgram("U8* alloc() { return NULL; }"))
         );
     }

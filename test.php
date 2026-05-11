@@ -12,6 +12,7 @@ require __DIR__ . "/Lexer.php";
 require __DIR__ . "/Tree.php";
 require __DIR__ . "/Ast.php";
 require __DIR__ . "/Parser.php";
+require __DIR__ . "/CodeGen.php";
 
 /* ---------- test framework ---------- */
 require __DIR__ . "/tests/TestCase.php";
@@ -20,6 +21,8 @@ require __DIR__ . "/tests/CollectionTest.php";
 require __DIR__ . "/tests/LexerTest.php";
 require __DIR__ . "/tests/ParserTest.php";
 require __DIR__ . "/tests/IntegrationTest.php";
+require __DIR__ . "/tests/CodeGenTest.php";
+require __DIR__ . "/tests/EndToEndTest.php";
 
 /* ---------- arg parsing ---------- *
  *   --filter=STRING    only run tests whose name contains STRING
@@ -49,11 +52,14 @@ $suites = [
     new LexerTest(),
     new ParserTest(),
     new IntegrationTest(),
+    new CodeGenTest(),
+    new EndToEndTest(),
 ];
 
 $start         = microtime(true);
 $totalPass     = 0;
 $totalFail     = 0;
+$totalSkip     = 0;
 $totalSkipped  = 0;
 $totalAsserts  = 0;
 $failures      = [];
@@ -74,6 +80,10 @@ foreach ($suites as $suite) {
         if ($r['status'] === 'pass') {
             $totalPass++;
             echo "  " . $green("ok  ") . " " . $r['name'] . "\n";
+        } elseif ($r['status'] === 'skip') {
+            $totalSkip++;
+            echo "  " . $yellow("skip") . " " . $r['name']
+               . "  " . $dim("(" . $r['error'] . ")") . "\n";
         } else {
             $totalFail++;
             $failures[] = ['suite' => $suiteName] + $r;
@@ -94,11 +104,13 @@ $elapsed = (microtime(true) - $start) * 1000;
 /* ---------- summary ---------- */
 echo str_repeat('-', 60) . "\n";
 if ($totalFail === 0) {
+    $skipNote = $totalSkip > 0 ? ", " . $yellow("$totalSkip skipped") : '';
     printf(
-        "%s  %s tests, %s assertions  %s\n",
+        "%s  %s tests, %s assertions%s  %s\n",
         $green($bold('PASS')),
         $totalPass,
         $totalAsserts,
+        $skipNote,
         $dim(sprintf('(%.1f ms)', $elapsed))
     );
     if ($totalSkipped > 0) {

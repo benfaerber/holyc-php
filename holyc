@@ -1,0 +1,117 @@
+#!/usr/bin/env php
+<?php
+
+namespace Holyc;
+
+require __DIR__ . "/Stringable.php";
+require __DIR__ . "/Collection.php";
+require __DIR__ . "/Token.php";
+require __DIR__ . "/LexToken.php";
+require __DIR__ . "/Lexer.php";
+require __DIR__ . "/Tree.php";
+require __DIR__ . "/Ast.php";
+require __DIR__ . "/Parser.php";
+require __DIR__ . "/CodeGen.php";
+
+function usage(): never {
+    fwrite(STDERR, <<<USAGE
+Usage: holyc <command> [args]
+
+Commands:
+  lex      <file>          tokenise a file and print the token stream
+  parse    <file>          parse a file and dump the AST
+  compile  <file> [-o out] compile to NASM source (.asm)
+  build    <file> [-o out] compile, assemble and link a runnable binary
+  run      <file>          build a temporary binary and run it; exit with its code
+
+USAGE);
+    exit(2);
+}
+
+$argv = $argv ?? [];
+array_shift($argv);                         // strip script name
+$cmd  = array_shift($argv) ?? null;
+if ($cmd === null) usage();
+
+$file = null;
+$out  = null;
+for ($i = 0; $i < count($argv); $i++) {
+    if ($argv[$i] === '-o') {
+        $out = $argv[++$i] ?? null;
+    } else {
+        $file ??= $argv[$i];
+    }
+}
+if ($file === null) usage();
+if (!is_file($file)) {
+    fwrite(STDERR, "no such file: $file\n");
+    exit(1);
+}
+
+$source = file_get_contents($file);
+
+try {
+    switch ($cmd) {
+        case 'lex': {
+            $tokens = (new Lexer($source))->lex();
+            foreach ($tokens->items as $t) {
+                $contents = $t->contents === null ? '' : ' ' . var_export($t->contents, true);
+                printf("%-20s%s\n", $t->token->value, $contents);
+            }
+            exit(0);
+        }
+        case 'parse': {
+            $tokens = (new Lexer($source))->lex();
+            $ast = (new Parser($tokens))->parse();
+            echo $ast->dump();
+            exit(0);
+        }
+        case 'compile': {
+            $tokens = (new Lexer($source))->lex();
+            $ast = (new Parser($tokens))->parse();
+            $asm = (new CodeGen())->compile($ast);
+            if ($out === null) {
+                echo $asm;
+            } else {
+                file_put_contents($out, $asm);
+            }
+            exit(0);
+        }
+        case 'build':
+        case 'run': {
+            $tokens = (new Lexer($source))->lex();
+            $ast    = (new Parser($tokens))->parse();
+            $asm    = (new CodeGen())->compile($ast);
+            $tmp    = sys_get_temp_dir() . '/holyc-' . getmypid();
+            @mkdir($tmp, 0700, true);
+            $base   = $tmp . '/' . pathinfo($file, PATHINFO_FILENAME);
+            $asmF   = "$base.asm";
+            $objF   = "$base.o";
+            $binF   = $out ?? "$base.bin";
+            file_put_contents($asmF, $asm);
+
+            $exec = function (string $c) {
+                $output = []; $code = 0;
+                exec($c . " 2>&1", $output, $code);
+                return [$code, implode("\n", $output)];
+            };
+            [$c, $o] = $exec("nasm -f elf64 " . escapeshellarg($asmF) . " -o " . escapeshellarg($objF));
+            if ($c !== 0) { fwrite(STDERR, "nasm: $o\n"); exit(1); }
+            [$c, $o] = $exec("ld " . escapeshellarg($objF) . " -o " . escapeshellarg($binF));
+            if ($c !== 0) { fwrite(STDERR, "ld:   $o\n"); exit(1); }
+
+            if ($cmd === 'run') {
+                passthru(escapeshellarg($binF), $code);
+                exit($code);
+            }
+            // build: leave artifact in place
+            fprintf(STDERR, "wrote %s\n", $binF);
+            exit(0);
+        }
+        default:
+            usage();
+    }
+} catch (LexError | ParseError | CodeGenError $e) {
+    fwrite(STDERR, get_class($e) . ": " . $e->getMessage() . "\n");
+    exit(1);
+}

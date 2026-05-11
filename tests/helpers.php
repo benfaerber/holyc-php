@@ -102,3 +102,55 @@ function parseExpression(string $source): AstNode {
     $tokens = (new Lexer($source))->lex();
     return (new Parser($tokens))->parseExpression();
 }
+
+/**
+ * One-shot helper: lex + parse + emit NASM source.
+ */
+function compileToAsm(string $source): string {
+    $ast = parseProgram($source);
+    return (new CodeGen())->compile($ast);
+}
+
+/**
+ * Assemble + link the given NASM source and run the resulting binary.
+ * Returns the exit code. Skips with a marker if nasm/ld are not installed.
+ */
+function buildAndRun(string $asm): int {
+    $tmpDir = sys_get_temp_dir() . "/holyc-test-" . getmypid();
+    @mkdir($tmpDir, 0700, true);
+    $asmFile = "$tmpDir/prog.asm";
+    $objFile = "$tmpDir/prog.o";
+    $binFile = "$tmpDir/prog";
+    file_put_contents($asmFile, $asm);
+
+    $run = function (string $cmd) {
+        $output = [];
+        $code = 0;
+        exec($cmd . " 2>&1", $output, $code);
+        return [$code, implode("\n", $output)];
+    };
+
+    [$c1, $o1] = $run("nasm -f elf64 " . escapeshellarg($asmFile) . " -o " . escapeshellarg($objFile));
+    if ($c1 !== 0) {
+        throw new \RuntimeException("nasm failed:\n$o1\n\n--- asm ---\n$asm");
+    }
+    [$c2, $o2] = $run("ld " . escapeshellarg($objFile) . " -o " . escapeshellarg($binFile));
+    if ($c2 !== 0) {
+        throw new \RuntimeException("ld failed:\n$o2");
+    }
+    [$exit, ] = $run(escapeshellarg($binFile));
+
+    @unlink($asmFile);
+    @unlink($objFile);
+    @unlink($binFile);
+    @rmdir($tmpDir);
+    return $exit;
+}
+
+function toolchainAvailable(): bool {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    $nasm = trim((string) shell_exec("command -v nasm 2>/dev/null"));
+    $ld   = trim((string) shell_exec("command -v ld 2>/dev/null"));
+    return $cached = ($nasm !== '' && $ld !== '');
+}

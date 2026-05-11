@@ -10,8 +10,21 @@ from the `Collections` to the `NodeTree` and everything in between!
 - [x] Lexer (numbers, hex, strings/chars w/ escapes, idents, keywords, operators, comments)
 - [x] Parser / AST Phase 1 (expressions, statements, function decls, built-in types)
 - [x] Parser / AST Phase 2 (user-defined types, multi-name decls, classes, top-level stmts, full compound-assign + `!`)
+- [x] NASM codegen — walking skeleton (System V AMD64 / Linux): functions, calls, locals, arithmetic, comparisons, if/else, while, for, break, recursion
 - [ ] Parser Phase 3 (`switch`/`case`, `try`/`catch`/`throw`, preprocessor expansion)
-- [ ] NASM codegen
+- [ ] Strings, pointers, arrays, structs in codegen
+- [ ] HolyC `Print` / format-string builtin
+
+## Compile and run a program
+```
+./holyc run examples/Fact.HC ; echo $?      # -> 120
+./holyc compile examples/Fact.HC -o fact.s  # emit .asm
+./holyc build   examples/Fact.HC -o fact    # build a binary
+./holyc parse   examples/Fact.HC            # dump the AST
+./holyc lex     examples/Fact.HC            # dump the token stream
+```
+
+Requires `nasm` and `ld` on `$PATH` for `build`/`run`.
 
 ## Run tests
 ```
